@@ -98,6 +98,14 @@ button.lnk{border:0;background:none;color:var(--blue);padding:0;text-decoration:
 .pwshow{font-family:ui-monospace,Consolas,monospace;font-size:19px;user-select:all;letter-spacing:.5px}
 .adm.note{border-left-color:var(--blue);margin:0 0 8px}
 .hint{margin:6px 2px 0;color:var(--mut);font-size:13px}
+.picker{border:1px solid var(--line);border-radius:10px;padding:8px;margin:0 0 12px}
+.picker input[type=search]{width:100%;margin-bottom:6px}
+.pk-list{max-height:210px;overflow:auto}
+.pk-list label.chk{margin:0;padding:3px 2px;font-size:15px}
+.pk-h{font-size:13px;color:var(--mut);margin:8px 0 2px;font-weight:600}
+.via{color:var(--mut);font-size:13px}
+.aclbox{margin:0 0 4px}
+.prevbar{border-left-color:#b4492f}
 @media(max-width:640px){.pc{width:84px;height:60px}.banner{flex-wrap:wrap}}
 @media(max-width:640px){h1{font-size:21px}#q{width:100%}.hero{padding:16px}.logo{width:60px;height:60px;font-size:30px}#panel{padding:4px 12px 10px}.row{flex-wrap:wrap}.ed{padding:0 0 10px 56px}}
 @media(prefers-reduced-motion:reduce){#toast{transition:none}}
@@ -134,7 +142,7 @@ const PRE = {
 </script>
 <script>
 const EMO = ['\ud83d\udcbb','\ud83d\udda5\ufe0f','\ud83d\udee0\ufe0f','\ud83d\udcde','\ud83d\udc65','\ud83d\uddc2\ufe0f','\ud83d\udcc5','\ud83d\udcb0','\ud83d\udcda','\ud83d\udcd6','\u2b07\ufe0f','\ud83d\udcca','\ud83d\udcc8','\ud83d\uddc4\ufe0f','\ud83c\udfe5','\ud83d\udccd','\u260e\ufe0f','\u2709\ufe0f','\ud83d\udd12','\ud83e\uddfe','\ud83e\ude7a','\ud83d\udc8a','\ud83d\ude91','\ud83d\udee1\ufe0f'];
-let S = null, TOK = '', ME = null, cur = '', view = 'home';
+let S = null, TOK = '', ME = null, cur = '', view = 'home', PV = '', USERS_AT = 0;   // PV = ชื่อผู้ใช้ที่แอดมินกำลังดูในมุมมองของเขา
 const PW_USER = 8, PW_ADMIN = 10;   // ต้องตรงกับ USER_PW_MIN / PW_MIN ใน Code.gs
 try { TOK = sessionStorage.getItem('tk') || ''; } catch (e) {}
 
@@ -172,7 +180,7 @@ function imgFail(el) { // รูปโหลดไม่ได้: กลับ�
  if (canEdit()) toast('โหลดรูปไม่สำเร็จ: ไฟล์ต้องแชร์เป็น "ทุกคนที่มีลิงก์" และเป็นไฟล์รูปภาพ', 1);
 }
 const ico = (v, d) => isImg(v) ? `<img src="${esc(fixImg(v))}" alt="" data-fb="${esc(d)}" onerror="imgFail(this)" referrerpolicy="no-referrer">` : esc(v || d);
-const canEdit = () => !!ME && ME.role === 'admin';
+const canEdit = () => !!ME && ME.role === 'admin' && !PV;
 
 function toast(m, bad) { const t = $('#toast'); t.textContent = m; t.className = 'show' + (bad ? ' bad' : ''); clearTimeout(toast.t); toast.t = setTimeout(() => t.className = '', 3200); }
 </script>
@@ -232,7 +240,7 @@ function setView(v) { view = v; $('#q').value = ''; render(); }
 function pick(id) { cur = id; view = 'home'; $('#q').value = ''; render(); }
 
 function row(l) {
- const inner = `<span class="ic">${ico(l.image, '\ud83d\udd17')}</span><span class="tx"><b>${esc(l.name)} ${accChip(l.access)}</b><small>${esc(l.desc)}</small></span>`;
+ const inner = `<span class="ic">${ico(l.image, '\ud83d\udd17')}</span><span class="tx"><b>${esc(l.name)} ${accChip(l.access, 'l', l.id)}</b><small>${esc(l.desc)}</small></span>`;
  const body = l.url ? `<a class="it" href="${esc(l.url)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="it">${inner}</div>`;
  return `<div class="row">${body}${canEdit() ? `<span class="ed"><button class="sm" onclick="editLink(${esc(JSON.stringify(l.id))})">แก้ไข</button><button class="sm" onclick="delLink(${esc(JSON.stringify(l.id))})">ลบ</button></span>` : ''}</div>`;
 }
@@ -247,7 +255,7 @@ function panel() {
  }
  const g = gs.find(x => x.id === cur); if (!g) { $('#panel').innerHTML = ''; return; }
  const items = sorted(S.links.filter(l => inGroup(g, l)));
- $('#panel').innerHTML = `<div class="ph"><span class="ic">${ico(g.icon, '\ud83d\udcc1')}</span><div><h2>${esc(g.name)}${accTag(g.access)}</h2><small>${esc(g.sub)}</small></div>
+ $('#panel').innerHTML = `<div class="ph"><span class="ic">${ico(g.icon, '\ud83d\udcc1')}</span><div><h2>${esc(g.name)} ${accChip(g.access, 'g', g.id)}</h2><small>${esc(g.sub)}</small></div>
   ${canEdit() ? `<span class="sp">${g.id !== '_other' ? `<button class="sm" aria-label="ย้ายกลุ่มนี้ไปก่อนหน้า" onclick="adm('moveGroup',${esc(JSON.stringify(g.id))},-1)">\u25c0 ย้ายไปก่อน</button><button class="sm" aria-label="ย้ายกลุ่มนี้ไปถัดไป" onclick="adm('moveGroup',${esc(JSON.stringify(g.id))},1)">ย้ายไปหลัง \u25b6</button><button class="sm" onclick="editGroup(${esc(JSON.stringify(g.id))})">แก้ชื่อ/ไอคอนกลุ่ม</button><button class="sm" onclick="delGroup(${esc(JSON.stringify(g.id))})">ลบกลุ่ม</button>` : ''}<button class="sm pri" onclick="editLink('',${esc(JSON.stringify(g.id))})">เพิ่มข้อมูลย่อย</button></span>` : ''}</div>`
   + (items.map(row).join('') || `<div class="empty">ยังไม่มีข้อมูลในกลุ่มนี้${canEdit() ? ' กด "เพิ่มข้อมูลย่อย" เพื่อเริ่มต้น' : ''}</div>`);
 }
@@ -270,6 +278,7 @@ function fld(f, vals) {
  if (f.t === 'area') return `${L}<textarea name="${f.k}" rows="${f.rows || 3}">${esc(v)}</textarea></label>`;
  if (f.t === 'chk') return `<label class="chk"><input type="checkbox" name="${f.k}"${v ? ' checked' : ''}> ${f.l}</label>`;
  if (f.t === 'bg') return bgField(String(v));
+ if (f.t === 'acl') return aclField(vals);
  if (f.t === 'icon' || f.t === 'img') return `${L}<span class="ipt"><input name="${f.k}" value="${esc(v)}" placeholder="${f.t === 'icon' ? 'อีโมจิ หรือลิงก์รูป' : 'ลิงก์รูป (https)'}"><button type="button" data-up="${f.k}">อัปโหลด</button></span></label>`
   + (f.t === 'icon' ? `<span class="emo">${EMO.map(e => `<button type="button" data-e="${f.k}">${e}</button>`).join('')}</span>` : '');
  return `${L}<input name="${f.k}" type="${f.t || 'text'}" value="${esc(v)}"${f.r ? ' required' : ''}${f.ac ? ' autocomplete="' + f.ac + '"' : ''}${f.max ? ' maxlength="' + f.max + '"' : ''}></label>`;
@@ -283,7 +292,7 @@ function form(title, fields, vals, save, check, opt) {
  dlg.innerHTML = `<form><h3>${title}</h3>${opt.note ? `<p class="mut">${opt.note}</p>` : ''}${fields.map(f => fld(f, vals)).join('')}<div class="acts"><button type="button" data-x="1">ยกเลิก</button><button class="pri">${opt.ok || (fields.length ? 'บันทึก' : 'ยืนยัน')}</button></div>${opt.foot ? `<p class="foot">${opt.foot}</p>` : ''}</form>`;
  dlg.querySelector('form').onsubmit = async e => {
   e.preventDefault(); const o = {};
-  fields.forEach(f => { const el = e.target.elements[f.k]; o[f.k] = f.t === 'chk' ? el.checked : el.value.trim(); if (f.t === 'img' || f.t === 'icon') o[f.k] = fixImg(o[f.k]); });
+  fields.forEach(f => { if (f.t === 'acl') { o.acl = collectPicker(dlg.querySelector('.aclbox')); return; } const el = e.target.elements[f.k]; o[f.k] = f.t === 'chk' ? el.checked : el.value.trim(); if (f.t === 'img' || f.t === 'icon') o[f.k] = fixImg(o[f.k]); });
   const bad = check && check(o); if (bad) return toast(bad, 1);   // ไม่ผ่าน: คงหน้าต่างและค่าที่กรอกไว้
   dlg.close(); await save(o);
  };
@@ -300,13 +309,27 @@ dlg.onclick = e => {
  else if (t.dataset.e) field(t.dataset.e).value = t.textContent;
  else if (t.dataset.up) uploadTo(u => field(t.dataset.up).value = u);
  else if (t.dataset.bg) setBg(t.dataset.bg);
- else if (t.dataset.bgup) uploadTo(u => { $('#bgu').value = u; setBg('img:' + u); });
+ else if (t.dataset.bgup) uploadTo(u => { $('#bgu').value = u; setBg('img:' + u); })
+ else if (t.dataset.tedit) teamEdit(t.dataset.tedit)
+ else if (t.dataset.tnew) teamEdit()
+ else if (t.dataset.tdel) teamDel(t.dataset.tdel)
+ else if (t.dataset.tback) teamMgr()
+ else if (t.dataset.asave) userAccSave(t.dataset.asave)
+ else if (t.dataset.prev) { const u = t.dataset.prev; dlg.close(); startPreview(u); }
+};
+dlg.onchange = e => {
+ if (e.target.name === 'access') { const b = dlg.querySelector('.aclbox'); if (b) b.hidden = e.target.value !== 'custom'; }
+ if (e.target.dataset && e.target.dataset.at !== undefined) updVia();
 };
 </script>
 <script>
 dlg.oninput = e => {
  if (e.target.id === 'bgc') setBg('color:' + e.target.value);
  if (e.target.id === 'bgu' && isImg(fixImg(e.target.value))) setBg('img:' + fixImg(e.target.value));
+ if (e.target.dataset && e.target.dataset.pq !== undefined) {      // ช่องค้นหาในรายชื่อ ทีม/คน
+  const q = e.target.value.trim().toLowerCase();
+  dlg.querySelectorAll('.pk-list label[data-s]').forEach(l => { l.style.display = q && !l.dataset.s.includes(q) ? 'none' : ''; });
+ }
 };
 
 function uploadTo(cb) { // ย่อรูปในเบราว์เซอร์ก่อนอัปโหลด
@@ -344,7 +367,7 @@ const errMsg = e => (e && e.message) || String(e);
 function setSession(r) { TOK = r.token; ME = r.me; try { sessionStorage.setItem('tk', TOK); } catch (e) {} }
 function clearSession() { TOK = ''; ME = null; try { sessionStorage.removeItem('tk'); } catch (e) {} }
 async function reload(msg) {   // ดึงข้อมูลใหม่ตามสิทธิ์ปัจจุบัน แล้วแสดงผล
- try { S = await rpc('getData', TOK); } catch (e) { toast(errMsg(e), 1); return; }
+ try { S = await rpc('getData', TOK, PV); } catch (e) { PV = ''; toast(errMsg(e), 1); return; }
  if (S.expired) { clearSession(); toast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', 1); } else ME = S.me || null;
  render(); if (msg) toast(msg);
 }
@@ -394,9 +417,10 @@ function editSettings() {
 }
 </script>
 <script>
-function editGroup(id) {
- const g = id ? S.groups.find(x => x.id === id) : { icon: '\ud83d\udcc1' };
- form(id ? 'แก้ไขหัวข้อหน้าหลัก' : 'เพิ่มหัวข้อหน้าหลัก', [{ k: 'name', l: 'ชื่อหัวข้อ', r: 1 }, { k: 'sub', l: 'ชื่อภาษาอังกฤษ / คำอธิบายสั้น' }, { k: 'icon', l: 'ไอคอน', t: 'icon' }, ACC_FLD], g, async o => {
+async function editGroup(id) {
+ if (!(await needUsers())) return;
+ const g = { ...(id ? S.groups.find(x => x.id === id) : { icon: '\ud83d\udcc1' }), acl: (id && S.acl && S.acl.g[id]) || { teams: [], users: [] } };
+ form(id ? 'แก้ไขหัวข้อหน้าหลัก' : 'เพิ่มหัวข้อหน้าหลัก', [{ k: 'name', l: 'ชื่อหัวข้อ', r: 1 }, { k: 'sub', l: 'ชื่อภาษาอังกฤษ / คำอธิบายสั้น' }, { k: 'icon', l: 'ไอคอน', t: 'icon' }, ACC_ITEM, ACL_FLD], g, async o => {
   const had = new Set(S.groups.map(x => x.id));
   if (await adm('saveGroup', { ...o, id: id || '' }) && !id) { const n = S.groups.find(x => !had.has(x.id)); if (n) { cur = n.id; view = 'home'; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }
  });
@@ -405,13 +429,14 @@ function delGroup(id) {
  const g = S.groups.find(x => x.id === id); if (!g) return;
  form('ลบหัวข้อ "' + esc(g.name) + '" ?', [], {}, async () => { if (await adm('deleteGroup', id)) { cur = ''; render(); } });
 }
-function editLink(id, gid) {
- const l = id ? S.links.find(x => x.id === id) : { category: gid };
+async function editLink(id, gid) {
+ if (!(await needUsers())) return;
+ const l = { ...(id ? S.links.find(x => x.id === id) : { category: gid }), acl: (id && S.acl && S.acl.l[id]) || { teams: [], users: [] } };
  const opts = S.groups.map(g => [g.id, g.name]);
  form(id ? 'แก้ไขข้อมูลย่อย' : 'เพิ่มข้อมูลย่อย', [
   { k: 'name', l: 'ชื่อรายการ', r: 1 }, { k: 'category', l: 'อยู่ในกลุ่ม', t: 'sel', o: opts },
   { k: 'url', l: 'ลิงก์ (https://..., tel:..., mailto:... หรือเว้นว่างถ้าเป็นข้อมูลอย่างเดียว)' },
-  { k: 'desc', l: 'รายละเอียด', t: 'area' }, { k: 'image', l: 'ไอคอนรายการ', t: 'icon' }, { k: 'order', l: 'ลำดับ (เลขน้อยแสดงก่อน)', t: 'number' }, ACC_FLD
+  { k: 'desc', l: 'รายละเอียด', t: 'area' }, { k: 'image', l: 'ไอคอนรายการ', t: 'icon' }, { k: 'order', l: 'ลำดับ (เลขน้อยแสดงก่อน)', t: 'number' }, ACC_ITEM, ACL_FLD
  ], l, o => adm('saveLinkData', { ...o, id: id || '' }));
 }
 </script>
@@ -552,8 +577,16 @@ function delNotice(id) {
 /* ---------- สิทธิ์การมองเห็น ---------- */
 const ACC = [['public', 'ทุกคน (ไม่ต้องเข้าสู่ระบบ)'], ['member', 'เฉพาะสมาชิกที่เข้าสู่ระบบ'], ['admin', 'เฉพาะผู้ดูแลระบบ']];
 const ACC_FLD = { k: 'access', l: 'ผู้ที่มองเห็นได้', t: 'sel', o: ACC };
-const accTag = a => canEdit() && a && a !== 'public' ? (a === 'admin' ? ' 🔒' : ' 👥') : '';
-const accChip = a => canEdit() && a && a !== 'public' ? `<span class="chip c">${a === 'admin' ? '🔒 แอดมิน' : '👥 สมาชิก'}</span>` : '';
+const ACC_ITEM = { k: 'access', l: 'ผู้ที่มองเห็นได้', t: 'sel', o: [ACC[0], ACC[1], ['custom', 'เฉพาะทีม / รายคนที่กำหนด'], ACC[2]] };   // กลุ่มและลิงก์เลือก "เฉพาะที่กำหนด" ได้
+const ACL_FLD = { k: 'acl', t: 'acl' };
+const ACCN = { member: '👥', custom: '🎯', admin: '🔒' };
+const accTag = a => canEdit() && ACCN[a] ? ' ' + ACCN[a] : '';
+const accChip = (a, kind, id) => {
+ if (!canEdit() || !ACCN[a]) return '';
+ let t = a === 'admin' ? '🔒 แอดมิน' : '👥 สมาชิก';
+ if (a === 'custom') { const e = (S.acl && S.acl[kind] && S.acl[kind][id]) || { teams: [], users: [] }; t = '🎯 ' + (e.teams.length + e.users.length ? e.teams.length + ' ทีม ' + e.users.length + ' คน' : 'ยังไม่ได้เลือกใคร'); }
+ return `<span class="chip c">${esc(t)}</span>`;
+};
 
 /* ---------- แถบบัญชี ---------- */
 function acctBar() {
@@ -563,10 +596,14 @@ function acctBar() {
   el.innerHTML = `<div class="card adm"><b>${n ? '🔒 มี ' + n + ' รายการสำหรับสมาชิก — เข้าสู่ระบบเพื่อดูเพิ่มเติม' : 'บุคลากรในหน่วย: เข้าสู่ระบบเพื่อใช้งานเต็มรูปแบบ'}</b><button class="pri" onclick="loginDlg()">เข้าสู่ระบบ</button>${S && S.reg && S.reg.open ? '<button onclick="regDlg()">สมัครสมาชิก</button>' : ''}</div>`;
   return;
  }
+ if (PV && S && S.preview) {
+  el.innerHTML = `<div class="card adm prevbar"><b>👁️ กำลังดูในมุมมองของ ${esc(S.preview.name)} (${esc(S.preview.username)})</b><span class="mut">นี่คือสิ่งที่สมาชิกคนนี้เห็นจริง</span><button class="pri" onclick="endPreview()">ออกจากมุมมองนี้</button></div>`;
+  return;
+ }
  const adm = ME.role === 'admin';
  el.innerHTML = `<div class="card adm"><b>${adm ? '🛡️ โหมดผู้ดูแลระบบ' : '👤 สมาชิก'} · ${esc(ME.name)}</b>${adm
-  ? '<button class="pri" onclick="editSettings()">ตั้งค่าเว็บไซต์</button><button onclick="noticeMgr()">แบนเนอร์/ป๊อปอัป</button><button onclick="editGroup()">+ เพิ่มหัวข้อหน้าหลัก</button><button onclick="editPage()">+ เพิ่มแท็บเมนู</button><button onclick="userMgr()">จัดการสมาชิก</button><button onclick="logView()">ประวัติเข้าใช้</button><button onclick="regSettings()">ตั้งค่าการสมัคร</button>' : ''}<button onclick="pwDlg()">เปลี่ยนรหัสผ่าน</button><button onclick="logout()">ออกจากระบบ</button></div>`
-  + (adm ? '<p class="hint">👥 = เห็นเฉพาะสมาชิก &nbsp; 🔒 = เห็นเฉพาะผู้ดูแลระบบ (ตั้งได้ในฟอร์มแก้ไขของแต่ละรายการ/กลุ่ม/ข่าว/แท็บ)</p>' : '');
+  ? '<button class="pri" onclick="editSettings()">ตั้งค่าเว็บไซต์</button><button onclick="noticeMgr()">แบนเนอร์/ป๊อปอัป</button><button onclick="editGroup()">+ เพิ่มหัวข้อหน้าหลัก</button><button onclick="editPage()">+ เพิ่มแท็บเมนู</button><button onclick="userMgr()">จัดการสมาชิก</button><button onclick="teamMgr()">จัดการทีม</button><button onclick="logView()">ประวัติเข้าใช้</button><button onclick="regSettings()">ตั้งค่าการสมัคร</button>' : ''}<button onclick="pwDlg()">เปลี่ยนรหัสผ่าน</button><button onclick="logout()">ออกจากระบบ</button></div>`
+  + (adm ? '<p class="hint">👥 = เห็นเฉพาะสมาชิก &nbsp; 🎯 = เฉพาะทีม/รายคนที่กำหนด &nbsp; 🔒 = เห็นเฉพาะผู้ดูแลระบบ (ตั้งได้ในฟอร์มแก้ไขของแต่ละรายการ/กลุ่ม; ข่าวและแท็บเลือกได้ 3 แบบแรก)</p>' : '');
 }
 
 /* ---------- แอดมิน: ตั้งค่าการสมัคร ---------- */
@@ -597,7 +634,7 @@ function fillUsers() {
  $('#ul').innerHTML = l.map(u => {
   const id = esc(JSON.stringify(u.id)), self = ME && ME.username === u.username;
   return `<div class="row"><div class="it"><span class="ic">${u.role === 'admin' ? '🛡️' : '👤'}</span><span class="tx"><b>${esc(u.name)} <small>(${esc(u.username)})</small></b><small>${esc(u.unit || '-')} | ${u.role === 'admin' ? 'ผู้ดูแล' : 'ผู้ใช้'}${u.active ? '' : ' | ระงับ'} | เข้าล่าสุด ${esc(u.last || '-')} | ${u.count} ครั้ง</small></span></div>`
-   + `<span class="ed">${self ? '' : `<button class="sm" onclick="uAct(${id},{role:'${u.role === 'admin' ? 'user' : 'admin'}'})">${u.role === 'admin' ? 'ลดเป็นผู้ใช้' : 'ตั้งเป็นผู้ดูแล'}</button><button class="sm" onclick="uAct(${id},{active:${!u.active}})">${u.active ? 'ระงับ' : 'เปิดใช้'}</button>`}<button class="sm" onclick="uReset(${id})">รีเซ็ตรหัส</button>${self ? '' : `<button class="sm" onclick="uDel(${id})">ลบ</button>`}</span></div>`;
+   + `<span class="ed">${self ? '' : `<button class="sm" onclick="uAct(${id},{role:'${u.role === 'admin' ? 'user' : 'admin'}'})">${u.role === 'admin' ? 'ลดเป็นผู้ใช้' : 'ตั้งเป็นผู้ดูแล'}</button><button class="sm" onclick="uAct(${id},{active:${!u.active}})">${u.active ? 'ระงับ' : 'เปิดใช้'}</button>`}<button class="sm" onclick="userAcc(${id})">สิทธิ์เข้าถึง</button><button class="sm" onclick="uReset(${id})">รีเซ็ตรหัส</button>${self ? '' : `<button class="sm" onclick="uDel(${id})">ลบ</button>`}</span></div>`;
  }).join('') || '<div class="empty">ไม่พบสมาชิก</div>';
 }
 async function uAct(id, p) { try { USERS = await rpc('updateUser', TOK, id, p); fillUsers(); toast('บันทึกแล้ว'); } catch (e) { uerr(e); } }
@@ -639,6 +676,93 @@ async function logCsv() {
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
  } catch (e) { uerr(e); }
 }
+
+/* ---------- ทีม / สิทธิ์เฉพาะ (แอดมิน) ---------- */
+async function needUsers() {       // โหลดรายชื่อสมาชิก (ใช้ซ้ำได้ 2 นาที)
+ if (USERS.length && Date.now() - USERS_AT < 120000) return true;
+ try { USERS = await rpc('listUsers', TOK); USERS_AT = Date.now(); return true; } catch (e) { uerr(e); return false; }
+}
+/** กล่องเลือกทีม/รายคน: o = {teams, selT, users, selU, showTeams} */
+function pickerHtml(o) {
+ const t = o.showTeams ? '<div class="pk-h">ทีม</div>' + (o.teams.map(x => `<label class="chk" data-s="${esc(x.name.toLowerCase())}"><input type="checkbox" data-pt="${esc(x.id)}"${o.selT.indexOf(x.id) >= 0 ? ' checked' : ''}> 👥 ${esc(x.name)} <small class="via">(${x.members.length} คน)</small></label>`).join('') || '<div class="mut">ยังไม่มีทีม — สร้างได้ที่ปุ่ม "จัดการทีม"</div>') : '';
+ const u = '<div class="pk-h">รายคน</div>' + (o.users.map(x => `<label class="chk" data-s="${esc((x.username + ' ' + x.name + ' ' + (x.unit || '')).toLowerCase())}"><input type="checkbox" data-pu="${esc(x.username)}"${o.selU.indexOf(x.username) >= 0 ? ' checked' : ''}> 👤 ${esc(x.name)} <small class="via">(${esc(x.username)}${x.unit ? ' · ' + esc(x.unit) : ''})</small></label>`).join('') || '<div class="mut">ยังไม่มีสมาชิก</div>');
+ return `<div class="picker"><input type="search" data-pq="1" placeholder="ค้นหาชื่อ / ชื่อผู้ใช้ / สังกัด" aria-label="ค้นหา"><div class="pk-list">${t}${u}</div></div>`;
+}
+function collectPicker(root) {
+ const get = a => Array.from(root.querySelectorAll('[' + a + ']:checked')).map(x => x.getAttribute(a));
+ return { teams: get('data-pt'), users: get('data-pu') };
+}
+function aclField(vals) {
+ const a = vals.acl || { teams: [], users: [] };
+ return `<div class="aclbox"${vals.access === 'custom' ? '' : ' hidden'}><p class="mut">เลือกทีมและ/หรือรายคนที่จะเห็นรายการนี้ (ผู้ดูแลเห็นเสมอ) — ถ้าไม่เลือกใครเลย จะมีเพียงผู้ดูแลที่เห็น</p>${pickerHtml({ teams: S.teams || [], selT: a.teams, users: USERS, selU: a.users, showTeams: true })}</div>`;
+}
+
+function teamMgr() {
+ if (dlg.open) dlg.close();
+ dlg.className = 'wide';
+ const ts = S.teams || [];
+ dlg.innerHTML = '<h3>จัดการทีม</h3><p class="mut">ทีมใช้รวมสมาชิกเป็นกลุ่ม เพื่อกำหนดสิทธิ์ดูรายการแบบ "เฉพาะทีม / รายคนที่กำหนด" ได้ทีเดียวทั้งทีม</p>'
+  + (ts.map(t => `<div class="row"><div class="it"><span class="ic">👥</span><span class="tx"><b>${esc(t.name)}</b><small>${t.members.length} คน${t.desc ? ' | ' + esc(t.desc) : ''}</small></span></div><span class="ed"><button class="sm" data-tedit="${esc(t.id)}">แก้ไข</button><button class="sm" data-tdel="${esc(t.id)}">ลบ</button></span></div>`).join('') || '<div class="empty">ยังไม่มีทีม กด "+ สร้างทีม" เพื่อเริ่มต้น</div>')
+  + '<div class="acts"><button data-x="1">ปิด</button><button class="pri" data-tnew="1">+ สร้างทีม</button></div>';
+ dlg.showModal();
+}
+async function teamEdit(id) {
+ if (!(await needUsers())) return;
+ const t = id ? (S.teams || []).find(x => x.id === id) : { name: '', desc: '', members: [] };
+ if (!t) return;
+ if (dlg.open) dlg.close();
+ dlg.className = 'wide';
+ dlg.innerHTML = `<form><h3>${id ? 'แก้ไขทีม' : 'สร้างทีม'}</h3><label>ชื่อทีม<input name="tname" required maxlength="60" value="${esc(t.name)}"></label><label>คำอธิบาย (ไม่บังคับ)<input name="tdesc" maxlength="200" value="${esc(t.desc)}"></label><div class="pk-h">สมาชิกในทีม</div>${pickerHtml({ teams: [], selT: [], users: USERS, selU: t.members, showTeams: false })}<div class="acts"><button type="button" data-tback="1">ยกเลิก</button><button class="pri">บันทึก</button></div></form>`;
+ dlg.querySelector('form').onsubmit = async e => {
+  e.preventDefault();
+  const sel = collectPicker(dlg), v = { id: id || '', name: dlg.querySelector('[name=tname]').value.trim(), desc: dlg.querySelector('[name=tdesc]').value.trim(), members: sel.users };
+  dlg.close();
+  if (await adm('saveTeam', v)) teamMgr(); else teamMgr();
+ };
+ dlg.showModal();
+}
+async function teamDel(id) {
+ const t = (S.teams || []).find(x => x.id === id); if (!t) return;
+ if (!confirm('ลบทีม "' + t.name + '" ?\nสมาชิกที่ได้สิทธิ์ผ่านทีมนี้จะเสียสิทธิ์ทันที (ผู้ใช้และรายการไม่ถูกลบ)')) return;
+ await adm('deleteTeam', id); teamMgr();
+}
+
+/** ตั้งสิทธิ์รายบุคคล: เลือกทีมที่สังกัด + รายการ "เฉพาะที่กำหนด" ที่ให้เห็นโดยตรง */
+function userAcc(id) {
+ const u = USERS.find(x => x.id === id); if (!u) return;
+ const teams = S.teams || [], acl = S.acl || { g: {}, l: {} }, mine = teams.filter(t => t.members.indexOf(u.username) >= 0).map(t => t.id);
+ const items = [];
+ S.groups.filter(g => g.access === 'custom').forEach(g => items.push({ key: 'g:' + g.id, label: '📁 กลุ่ม: ' + g.name, e: acl.g[g.id] || { teams: [], users: [] } }));
+ S.links.filter(l => l.access === 'custom').forEach(l => items.push({ key: 'l:' + l.id, label: '🔗 ' + l.name, e: acl.l[l.id] || { teams: [], users: [] } }));
+ if (dlg.open) dlg.close();
+ dlg.className = 'wide';
+ dlg.innerHTML = `<h3>สิทธิ์เข้าถึงของ ${esc(u.name)} <small>(${esc(u.username)})</small></h3>`
+  + '<p class="mut">สมาชิกเห็นรายการ "ทุกคน" และ "เฉพาะสมาชิก" อยู่แล้ว ส่วนนี้ใช้กำหนดเพิ่มสำหรับรายการแบบ "เฉพาะทีม / รายคนที่กำหนด" เท่านั้น</p>'
+  + '<div class="pk-h">ทีมที่สังกัด</div>' + (teams.map(t => `<label class="chk"><input type="checkbox" data-at="${esc(t.id)}"${mine.indexOf(t.id) >= 0 ? ' checked' : ''}> 👥 ${esc(t.name)}</label>`).join('') || '<div class="mut">ยังไม่มีทีม — สร้างได้ที่ปุ่ม "จัดการทีม"</div>')
+  + '<div class="pk-h">รายการแบบเฉพาะที่กำหนด — ให้สมาชิกคนนี้เห็น</div>'
+  + (items.map(x => `<label class="chk" data-via="${esc(x.e.teams.join(','))}"><input type="checkbox" data-ai="${esc(x.key)}"${x.e.users.indexOf(u.username) >= 0 ? ' checked' : ''}> ${esc(x.label)} <span class="via"></span></label>`).join('') || '<div class="mut">ยังไม่มีรายการที่ตั้งเป็น "เฉพาะทีม / รายคนที่กำหนด" — ตั้งได้ที่ฟอร์มแก้ไขของกลุ่มหรือลิงก์</div>')
+  + `<div class="acts"><button data-x="1">ปิด</button><button data-prev="${esc(u.username)}">ดูในมุมมองผู้ใช้นี้</button><button class="pri" data-asave="${esc(u.id)}">บันทึก</button></div>`;
+ dlg.showModal();
+ updVia();
+}
+function updVia() {       // แสดง "(ได้ผ่านทีม ...)" ตามทีมที่ติ๊กอยู่ตอนนี้
+ const on = Array.from(dlg.querySelectorAll('[data-at]:checked')).map(x => x.dataset.at), names = {};
+ (S.teams || []).forEach(t => { names[t.id] = t.name; });
+ dlg.querySelectorAll('label[data-via]').forEach(l => {
+  const via = l.dataset.via.split(',').filter(x => x && on.indexOf(x) >= 0).map(x => names[x]);
+  l.querySelector('.via').textContent = via.length ? '(ได้ผ่านทีม ' + via.join(', ') + ' อยู่แล้ว)' : '';
+ });
+}
+async function userAccSave(id) {
+ const u = USERS.find(x => x.id === id); if (!u) return;
+ const on = a => Array.from(dlg.querySelectorAll('[' + a + ']:checked')).map(x => x.getAttribute(a));
+ const items = on('data-ai'), p = { teams: on('data-at'), groups: items.filter(x => x.indexOf('g:') === 0).map(x => x.slice(2)), links: items.filter(x => x.indexOf('l:') === 0).map(x => x.slice(2)) };
+ dlg.close();
+ await adm('saveUserAccess', u.username, p);
+ userMgr();
+}
+async function startPreview(username) { PV = username; view = 'home'; cur = ''; await reload(); window.scrollTo({ top: 0 }); }
+async function endPreview() { PV = ''; view = 'home'; cur = ''; await reload('กลับสู่มุมมองผู้ดูแลแล้ว'); }
 
 /* ---------- เริ่มทำงาน ---------- */
 (async () => {
