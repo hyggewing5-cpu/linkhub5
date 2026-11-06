@@ -219,7 +219,14 @@ async function adm(fn, ...a) {
 
 /* ---------- ธีมและพื้นหลัง ---------- */
 const isHexColor = v => v.length >= 4 && v.length <= 9 && v[0] === '#' && v.slice(1).split('').every(c => '0123456789abcdefABCDEF'.includes(c));
+const FONTS = { plex: ['IBM Plex Sans Thai', 'IBM Plex Sans Thai (ค่าเริ่มต้น)', 'IBM+Plex+Sans+Thai:wght@400;600;700'], sarabun: ['Sarabun', 'Sarabun (ทางการ อ่านง่าย)', 'Sarabun:wght@400;600;700'], prompt: ['Prompt', 'Prompt (ทันสมัย)', 'Prompt:wght@400;600;700'], kanit: ['Kanit', 'Kanit (หนา เด่น)', 'Kanit:wght@400;600;700'], notothai: ['Noto Sans Thai', 'Noto Sans Thai (เรียบ)', 'Noto+Sans+Thai:wght@400;600;700'], mitr: ['Mitr', 'Mitr (โค้งมน)', 'Mitr:wght@400;600'], mali: ['Mali', 'Mali (ลายมือ เป็นกันเอง)', 'Mali:wght@400;600;700'], chakra: ['Chakra Petch', 'Chakra Petch (เทคโนโลยี)', 'Chakra+Petch:wght@400;600;700'] };
+function applyFont(k) {
+ const f = FONTS[k] || FONTS.plex;
+ if (k !== 'plex' && !document.getElementById('fnt_' + k)) { const l = document.createElement('link'); l.id = 'fnt_' + k; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=' + f[2] + '&display=swap'; document.head.appendChild(l); }
+ document.body.style.fontFamily = "'" + f[0] + "',system-ui,sans-serif";
+}
 function applyTheme() {
+ applyFont(S.settings.font);
  const s = S.settings; let b = s.background || 'preset:sky', css = PRE.sky;
  if (s.isDarkMode && b === 'preset:sky') b = 'preset:navy';
  if (b.startsWith('preset:')) css = PRE[b.slice(7)] || PRE.sky;
@@ -454,6 +461,7 @@ function editSettings() {
   { k: 'siteName', l: 'ชื่อหน่วยงาน', r: 1 }, { k: 'siteSub', l: 'ข้อความใต้ชื่อ' },
   { k: 'profileImage', l: 'โลโก้หน่วยงาน', t: 'img' },
   { k: 'devName', l: 'ผู้พัฒนา: ชื่อ-สกุล' }, { k: 'devRole', l: 'ผู้พัฒนา: ตำแหน่ง' }, { k: 'devPhone', l: 'ผู้พัฒนา: หมายเลขติดต่อ', t: 'tel' },
+  { k: 'font', l: 'ฟอนต์ของเว็บไซต์', t: 'sel', o: Object.keys(FONTS).map(k => [k, FONTS[k][1]]) },
   { k: 'background', t: 'bg' }, { k: 'isDarkMode', l: 'ใช้โหมดมืด', t: 'chk' }
  ], S.settings, o => adm('saveSettingsData', o));
 }
