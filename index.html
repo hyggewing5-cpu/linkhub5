@@ -106,13 +106,38 @@ button.lnk{border:0;background:none;color:var(--blue);padding:0;text-decoration:
 .via{color:var(--mut);font-size:13px}
 .aclbox{margin:0 0 4px}
 .prevbar{border-left-color:#b4492f}
+#landing{min-height:100vh;display:grid;place-items:center;padding:24px 16px}
+#landing[hidden]{display:none}
+.lcard{width:100%;max-width:440px;text-align:center;padding:34px 28px 26px;border-bottom:5px solid var(--gold);box-shadow:0 18px 50px rgba(0,0,0,.22)}
+.lcard .logo{width:112px;height:112px;font-size:56px;margin:0 auto 16px;box-shadow:0 0 0 4px var(--card),0 0 0 6px var(--line)}
+.lcard h1{text-wrap:balance;margin:0 0 4px;font-size:25px;line-height:1.3}
+.lcard p{margin:0;color:var(--mut)}
+.lbtns{display:grid;gap:10px;margin:26px 0 14px}
+.lbtns button{padding:13px 16px;font-size:17px;border-radius:10px}
+.lbtns button[disabled]{opacity:.55;cursor:not-allowed}
+.lcard .lnk{font-size:14px}
+.lfoot{margin-top:10px;font-size:13px;color:var(--mut)}
+.lpv{position:fixed;top:12px;right:12px;z-index:50;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 @media(max-width:640px){.pc{width:84px;height:60px}.banner{flex-wrap:wrap}}
 @media(max-width:640px){h1{font-size:21px}#q{width:100%}.hero{padding:16px}.logo{width:60px;height:60px;font-size:30px}#panel{padding:4px 12px 10px}.row{flex-wrap:wrap}.ed{padding:0 0 10px 56px}}
 @media(prefers-reduced-motion:reduce){#toast{transition:none}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<main id="landing" hidden>
+ <div class="card lcard">
+  <div class="logo" id="llogo"></div>
+  <h1 id="lname"></h1><p id="lsub"></p>
+  <div class="lbtns">
+   <button class="pri" id="lgin" onclick="loginDlg()">🔑 เข้าสู่ระบบ</button>
+   <button id="lreg" onclick="regDlg()">📝 สมัครสมาชิก</button>
+  </div>
+  <button type="button" class="lnk" onclick="enterGuest()">เข้าดูข้อมูลทั่วไปโดยไม่เข้าสู่ระบบ →</button>
+  <div class="lfoot" id="lnote"></div>
+ </div>
+ <button class="pri lpv" id="lpv" hidden onclick="LP=false;render()">✕ ปิดตัวอย่างหน้าเข้าสู่ระบบ</button>
+</main>
+<div class="wrap" id="site">
  <header class="card hero">
   <div class="brand"><div class="logo" id="logo"></div><div><h1 id="sn">กำลังโหลด...</h1><p id="ss"></p></div></div>
   <input id="q" type="search" placeholder="ค้นหาระบบหรือลิงก์" aria-label="ค้นหาระบบหรือลิงก์">
@@ -142,6 +167,8 @@ const PRE = {
 </script>
 <script>
 const EMO = ['\ud83d\udcbb','\ud83d\udda5\ufe0f','\ud83d\udee0\ufe0f','\ud83d\udcde','\ud83d\udc65','\ud83d\uddc2\ufe0f','\ud83d\udcc5','\ud83d\udcb0','\ud83d\udcda','\ud83d\udcd6','\u2b07\ufe0f','\ud83d\udcca','\ud83d\udcc8','\ud83d\uddc4\ufe0f','\ud83c\udfe5','\ud83d\udccd','\u260e\ufe0f','\u2709\ufe0f','\ud83d\udd12','\ud83e\uddfe','\ud83e\ude7a','\ud83d\udc8a','\ud83d\ude91','\ud83d\udee1\ufe0f'];
+let LP = false, ENTER = false;   // LP = แอดมินดูตัวอย่างหน้าเข้าสู่ระบบ, ENTER = ผู้เยี่ยมชมเลือกเข้าดูข้อมูลทั่วไป
+try { ENTER = sessionStorage.getItem('enter') === '1'; } catch (e) {}
 let S = null, TOK = '', ME = null, cur = '', view = 'home', PV = '', USERS_AT = 0;   // PV = ชื่อผู้ใช้ที่แอดมินกำลังดูในมุมมองของเขา
 const PW_USER = 8, PW_ADMIN = 10;   // ต้องตรงกับ USER_PW_MIN / PW_MIN ใน Code.gs
 try { TOK = sessionStorage.getItem('tk') || ''; } catch (e) {}
@@ -216,8 +243,23 @@ const sorted = a => a.slice().sort((x, y) => x.order - y.order || x.name.localeC
 
 </script>
 <script>
+/** หน้าแรก = หน้าเข้าสู่ระบบ (แสดงเมื่อยังไม่ได้ล็อกอิน และยังไม่ได้เลือกเข้าดูข้อมูลทั่วไป) */
+function landing() {
+ const on = LP || (!ME && !ENTER), s = S.settings;
+ $('#landing').hidden = !on; $('#site').style.display = on ? 'none' : '';
+ $('#lpv').hidden = !LP;
+ if (!on) return false;
+ $('#llogo').innerHTML = isImg(s.profileImage) ? `<img src="${esc(fixImg(s.profileImage))}" alt="โลโก้หน่วยงาน" data-fb="\ud83c\udfe5" onerror="imgFail(this)" referrerpolicy="no-referrer">` : '\ud83c\udfe5';
+ $('#lname').textContent = s.siteName; $('#lsub').textContent = s.siteSub;
+ const open = !S.reg || S.reg.open;
+ $('#lreg').disabled = !open; $('#lreg').textContent = open ? '📝 สมัครสมาชิก' : '📝 ปิดรับสมัครชั่วคราว';
+ $('#lnote').textContent = 'สมาชิกใหม่สมัครแล้วใช้งานได้ทันที · ลืมรหัสผ่านให้ติดต่อผู้ดูแลระบบ';
+ return true;
+}
+function enterGuest() { ENTER = true; try { sessionStorage.setItem('enter', '1'); } catch (e) {} render(); showPopup(); }
 function render() {
  applyTheme();
+ if (landing()) return;
  const s = S.settings, gs = groups(), home = view === 'home';
  if (!gs.some(g => g.id === cur)) cur = gs[0] ? gs[0].id : '';
  $('#logo').innerHTML = isImg(s.profileImage) ? `<img src="${esc(fixImg(s.profileImage))}" alt="โลโก้หน่วยงาน" data-fb="\ud83c\udfe5" onerror="imgFail(this)" referrerpolicy="no-referrer">` : '\ud83c\udfe5';
@@ -397,7 +439,7 @@ function regDlg(v) {
   : o.pw !== o.pw2 ? 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' : '',
  { ok: 'สมัครและเข้าใช้งาน', foot: 'มีบัญชีแล้ว? <button type="button" class="lnk" data-go="login">เข้าสู่ระบบ</button>' });
 }
-async function logout() { try { await rpc('logout', TOK); } catch (e) {} clearSession(); await reload('ออกจากระบบแล้ว'); }
+async function logout() { try { await rpc('logout', TOK); } catch (e) {} clearSession(); ENTER = false; try { sessionStorage.removeItem('enter'); } catch (e) {} PV = ''; LP = false; view = 'home'; await reload('ออกจากระบบแล้ว'); }
 function pwDlg() {
  const mn = ME && ME.master ? PW_ADMIN : PW_USER;
  form('เปลี่ยนรหัสผ่าน', [{ k: 'o', l: 'รหัสผ่านเดิม', t: 'password', r: 1, ac: 'current-password' }, { k: 'n', l: 'รหัสผ่านใหม่ (อย่างน้อย ' + mn + ' ตัวอักษร มีทั้งตัวอักษรและตัวเลข)', t: 'password', r: 1, ac: 'new-password' }, { k: 'n2', l: 'ยืนยันรหัสผ่านใหม่', t: 'password', r: 1, ac: 'new-password' }], {}, async o => {
@@ -505,7 +547,7 @@ function banners() {
 <script>
 let popShown = false;
 function showPopup() { // แสดงป๊อปอัปครั้งเดียวต่อการเข้าชม (ข้ามในโหมดแอดมิน)
- if (popShown || canEdit()) return;
+ if (popShown || canEdit() || !$('#landing').hidden) return;
  popShown = true;
  const p = S.notices.filter(n => n.kind === 'popup' && live(n)).sort((a, b) => b.start.localeCompare(a.start))[0];
  if (!p) return;
@@ -602,7 +644,7 @@ function acctBar() {
  }
  const adm = ME.role === 'admin';
  el.innerHTML = `<div class="card adm"><b>${adm ? '🛡️ โหมดผู้ดูแลระบบ' : '👤 สมาชิก'} · ${esc(ME.name)}</b>${adm
-  ? '<button class="pri" onclick="editSettings()">ตั้งค่าเว็บไซต์</button><button onclick="noticeMgr()">แบนเนอร์/ป๊อปอัป</button><button onclick="editGroup()">+ เพิ่มหัวข้อหน้าหลัก</button><button onclick="editPage()">+ เพิ่มแท็บเมนู</button><button onclick="userMgr()">จัดการสมาชิก</button><button onclick="teamMgr()">จัดการทีม</button><button onclick="logView()">ประวัติเข้าใช้</button><button onclick="regSettings()">ตั้งค่าการสมัคร</button>' : ''}<button onclick="pwDlg()">เปลี่ยนรหัสผ่าน</button><button onclick="logout()">ออกจากระบบ</button></div>`
+  ? '<button class="pri" onclick="editSettings()">ตั้งค่าเว็บไซต์ (โลโก้/วอลเปเปอร์)</button><button onclick="LP=true;render()">ดูหน้าเข้าสู่ระบบ</button><button onclick="noticeMgr()">แบนเนอร์/ป๊อปอัป</button><button onclick="editGroup()">+ เพิ่มหัวข้อหน้าหลัก</button><button onclick="editPage()">+ เพิ่มแท็บเมนู</button><button onclick="userMgr()">จัดการสมาชิก</button><button onclick="teamMgr()">จัดการทีม</button><button onclick="logView()">ประวัติเข้าใช้</button><button onclick="regSettings()">ตั้งค่าการสมัคร</button>' : ''}<button onclick="pwDlg()">เปลี่ยนรหัสผ่าน</button><button onclick="logout()">ออกจากระบบ</button></div>`
   + (adm ? '<p class="hint">👥 = เห็นเฉพาะสมาชิก &nbsp; 🎯 = เฉพาะทีม/รายคนที่กำหนด &nbsp; 🔒 = เห็นเฉพาะผู้ดูแลระบบ (ตั้งได้ในฟอร์มแก้ไขของแต่ละรายการ/กลุ่ม; ข่าวและแท็บเลือกได้ 3 แบบแรก)</p>' : '');
 }
 
