@@ -464,7 +464,7 @@ function editSettings() {
   { k: 'devName', l: 'ผู้พัฒนา: ชื่อ-สกุล' }, { k: 'devRole', l: 'ผู้พัฒนา: ตำแหน่ง' }, { k: 'devPhone', l: 'ผู้พัฒนา: หมายเลขติดต่อ', t: 'tel' },
   { k: 'font', l: 'ฟอนต์ของเว็บไซต์', t: 'sel', o: Object.keys(FONTS).map(k => [k, FONTS[k][1]]) },
   { k: 'background', t: 'bg' }, { k: 'isDarkMode', l: 'ใช้โหมดมืด', t: 'chk' }, { k: 'guestOpen', l: 'เปิดให้ผู้ที่ยังไม่เข้าสู่ระบบ "เข้าดูข้อมูลทั่วไป" ได้ (ปิด = ต้องเข้าสู่ระบบก่อนทุกคน)', t: 'chk' }
- ], S.settings, o => adm('saveSettingsData', o));
+ ], { ...S.settings, guestOpen: S.settings.guestOpen !== false, font: S.settings.font || 'plex' }, o => adm('saveSettingsData', o));
 }
 </script>
 <script>
